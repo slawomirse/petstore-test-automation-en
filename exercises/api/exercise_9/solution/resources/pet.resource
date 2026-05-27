@@ -1,0 +1,17 @@
+*** Settings ***
+Resource    common.resource
+Library     ../libraries/payload_builders.py
+
+*** Variables ***
+${pet_id}    ${EMPTY}
+
+*** Keywords ***
+Create Pet
+    [Documentation]    Generates a random pet payload and creates it via POST /pet.
+    ...    Saves ${pet_id} to TEST scope for use in other steps.
+    ${headers}=    Create Bearer Headers
+    ${payload}=    Build Pet Payload
+    ${pet_body}=    Serialize To Json    ${payload}
+    VAR    ${pet_id}    ${payload['id']}    scope=TEST
+    Send POST Request    endpoint=/pet    payload=${pet_body}    headers=${headers}    expected_status_code=200
+    Send GET Request    /pet/${pet_id}    expected_status_code=200
