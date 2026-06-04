@@ -5,6 +5,13 @@ This repository contains progressive exercises to learn Robot Framework and API 
 ## Prerequisites
 
 - `uv` package manager
+- `node` and `npx` (required by the Browser library's Playwright runtime)
+
+After installing packages, download the Chromium browser before running any UI exercises:
+
+```bash
+uv run rfbrowser init chromium
+```
 
 ## Running Tests
 
@@ -771,6 +778,393 @@ uv run python -m robot exercises/api/exercise_1/practice/
 ```bash
 uv run python -m robot --outputdir results/ exercises/api/exercise_7/solution/
 ```
+
+---
+
+# Part 4: UI Exercise Structure
+
+All UI exercises live under `exercises/ui/`. Each exercise is self-contained with its own `resources/` folder (and `libraries/` where needed).
+
+```
+exercises/ui/
+├── exercise_1/
+│   ├── practice/
+│   │   ├── resources/
+│   │   │   └── variables.resource
+│   │   └── practice.robot
+│   └── solution/
+│       ├── resources/
+│       │   └── variables.resource
+│       └── solution.robot
+├── exercise_11/                        # example with page objects + library
+│   ├── practice/
+│   │   ├── libraries/
+│   │   │   └── payload_builders.py
+│   │   ├── resources/
+│   │   │   ├── variables.resource
+│   │   │   └── ui/
+│   │   │       ├── setup.resource
+│   │   │       ├── teardown.resource
+│   │   │       └── pages/
+│   │   │           ├── home_page.resource
+│   │   │           ├── login_page.resource
+│   │   │           └── pets_page.resource
+│   │   └── practice.robot
+│   └── solution/
+│       └── ...
+└── exercise_14/ ...
+```
+
+## Prerequisites: start the Petstore services
+
+UI tests require both the frontend and backend running:
+
+```bash
+cd ../petstore-test-automation-en
+docker compose up -d
+```
+
+## Running UI Exercises
+
+### Run a specific exercise solution:
+```bash
+uv run python -m robot exercises/ui/exercise_4/solution/
+```
+
+### Run a practice file:
+```bash
+uv run python -m robot exercises/ui/exercise_4/practice/
+```
+
+### Run with results saved:
+```bash
+uv run python -m robot --outputdir results/ exercises/ui/exercise_14/solution/
+```
+
+### Run excluding known bugs:
+```bash
+uv run python -m robot --exclude known_bug exercises/ui/exercise_7/solution/
+```
+
+### Run only known bug tests:
+```bash
+uv run python -m robot --include known_bug exercises/ui/exercise_7/solution/
+```
+
+---
+
+## UI Exercises Overview
+
+### Exercise 1: Directory Structure and Variables
+**Objective:** Set up the framework directory structure for combined UI and API testing
+
+**Description:** Prepare the foundation for a UI/API test framework by creating the `resources/variables.resource` file with all global variables, including separate URLs for the backend and frontend.
+
+**Test Steps:**
+1. Create `resources/variables.resource`
+2. Add `${BASE_BACKEND_URL}` set to `http://127.0.0.1:8000`
+3. Add `${BASE_FRONTEND_URL}` set to `http://127.0.0.1:3000`
+4. Add `${DEFAULT_PET_ID}`, `${DEFAULT_PET_NAME}`, `${DEFAULT_ADMIN_USERNAME}`, `${DEFAULT_ADMIN_PASSWORD}`
+5. Add `${token}`, `${HEADLESS}`, `${BROWSER}` variables
+6. Import `variables.resource` in a test file and verify the variables load correctly
+
+**Key Concepts:**
+- Shared variable files for UI + API
+- `${BASE_FRONTEND_URL}` vs `${BASE_BACKEND_URL}` distinction
+- Global test configuration
+
+---
+
+### Exercise 2: Page Object Model Resource Files
+**Objective:** Create the UI layer folder structure following the Page Object Model pattern
+
+**Description:** Create page object resource files for each page of the application: home, pets, orders, and profile. Each file should have the standard Robot Framework sections and import `variables.resource`.
+
+**Test Steps:**
+1. Create `resources/ui/pages/` directory
+2. Create `home_page.resource` with `*** Settings ***`, `*** Variables ***`, `*** Keywords ***` sections
+3. Create `pets_page.resource` with the same sections
+4. Create `orders_page.resource` with the same sections
+5. Create `profile_page.resource` with the same sections
+6. In each file's `*** Settings ***`, import `../../variables.resource`
+7. Add locator variables to `home_page.resource` (hero title, user badge, login button, default pet card)
+
+**Key Concepts:**
+- Page Object Model pattern
+- Resource file organization
+- XPath locators as variables
+- Separation of page-specific logic
+
+---
+
+### Exercise 3: Browser Setup and Teardown
+**Objective:** Configure browser initialization and cleanup for the test suite
+
+**Description:** Create `setup.resource` and `teardown.resource` for the UI layer. Use them in `tests/__init__.robot` so the browser starts before all tests and closes after. Verify with a simple "Hello World" test.
+
+**Test Steps:**
+1. Create `resources/ui/setup.resource` and import `Browser` library
+2. Add `Setup Browser` keyword: open browser with `${BROWSER}`, set `headless=${HEADLESS}`, viewport 1920×1200, timeout 10s
+3. Create `resources/ui/teardown.resource` and import `Browser` library
+4. Add `Teardown Browser Session` keyword: `Close Browser    ALL`
+5. Create `tests/__init__.robot` with `Suite Setup    Setup Browser` and `Suite Teardown    Teardown Browser Session`
+6. Create `tests/home_page.robot` with a single test `Log Hello World`
+7. Run the tests and confirm the browser opens and closes correctly
+
+**Key Concepts:**
+- `Browser` library (Playwright-based)
+- `New Browser`, `New Context`, `New Page` keywords
+- `__init__.robot` for suite-level setup/teardown
+- `headless=False` for visual confirmation
+
+---
+
+### Exercise 4: Verify Guest Mode
+**Objective:** Write the first real UI test — verifying the application loads in guest mode
+
+**Description:** Add keywords to `home_page.resource` for opening the home page, verifying it loaded, and checking that the user is shown as "Guest". Use them in a test scenario.
+
+**Test Steps:**
+1. Add `Open Home Page` keyword: `Go To    ${BASE_FRONTEND_URL}`
+2. Add `Verify Page Is Loaded` keyword: `Wait For Load State    load`
+3. Add `Verify Home Page Is Loaded` keyword: check hero title, login button visible, page title = "Petstore"
+4. Add `Verify User Is Logged In As Guest` keyword: get text from user badge, verify it equals "Guest"
+5. Write a test case `Verify Guest Mode` that calls these keywords
+
+**Key Concepts:**
+- `Go To` for navigation
+- `Wait For Elements State` for visibility checks
+- `Get Text` + `Should Be Equal` for assertions
+- `Get Title` for page title verification
+
+---
+
+### Exercise 5: Verify Default Pet on Home Page
+**Objective:** Verify that the default pet is displayed on the home page
+
+**Description:** Add `Verify Default Pet Is Displayed` keyword to `home_page.resource` that checks the default pet card is visible and has the expected name. Add a second test to the test file.
+
+**Test Steps:**
+1. Add `Verify Default Pet Is Displayed` keyword to `home_page.resource`
+2. Wait for the default pet card element to be visible
+3. Get the text of the pet name element
+4. Verify it equals `${DEFAULT_PET_NAME}`
+5. Add a second test case `Verify Default Pet On Home Page`
+
+**Key Concepts:**
+- XPath with dynamic variables: `//*[@data-id='${DEFAULT_PET_ID}']`
+- `Wait For Elements State` with `visible` state
+- Chaining multiple verification keywords
+
+---
+
+### Exercise 6: Login With Wrong Password
+**Objective:** Test that login fails with an incorrect password and shows an error
+
+**Description:** Create `login_page.resource` with keywords for opening the login form, submitting credentials, and verifying error messages. Write a test that tries to log in with a wrong password.
+
+**Test Steps:**
+1. Create `resources/ui/pages/login_page.resource` importing `home_page.resource`
+2. Add locator variables: username input, password input, sign-in button, error toast, success toast
+3. Add `Open Login Form` keyword: click the login button
+4. Add `Submit Login Form With Credentials` keyword with `${username}` and `${password}` arguments
+5. Add `Verify Login Error Is Displayed` keyword: check toast contains "Login failed"
+6. Add `Verify Login Success Is Displayed` keyword: check toast contains "Welcome back"
+7. Write test `Login With Wrong Password` using wrong password, verify error shown and user still guest
+
+**Key Concepts:**
+- `Fill Text` for input fields
+- `Select Options By` for dropdowns
+- Toast notification verification with XPath `normalize-space()`
+- Negative test scenarios
+
+---
+
+### Exercise 7: Tag as Known Bug and Exclude from Default Run
+**Objective:** Mark a flaky/buggy test with a tag and learn to include/exclude it
+
+**Description:** Add `[Tags]` and `[Documentation]` to the login-with-wrong-password test to mark it as a known bug. Learn how to run tests while excluding or including specific tags.
+
+**Test Steps:**
+1. Add `[Tags]    known_bug` to the `Login With Wrong Password` test
+2. Add `[Documentation]` explaining it demonstrates a known application bug
+3. Run tests excluding this tag: `uv run python -m robot --exclude known_bug solution/`
+4. Verify the tagged test does not run
+5. Run only the tagged test: `uv run python -m robot --include known_bug solution/`
+
+**Key Concepts:**
+- `[Tags]` for test categorization
+- `[Documentation]` for test descriptions
+- `--exclude` and `--include` command-line flags
+- Known bug tracking in test suites
+
+---
+
+### Exercise 8: Login With Correct Password
+**Objective:** Test the successful login flow
+
+**Description:** Add keywords for successful login verification and `Logout`/`Logout If Needed` cleanup. Write a test for login with correct credentials.
+
+**Test Steps:**
+1. Add `Verify User Is Logged In` keyword (with `${username}` argument): check user badge text and "Sign Out" button
+2. Add `Logout` keyword: click the login/logout button
+3. Add `Logout If Needed` keyword: check current user, logout only if not "Guest"
+4. Write `Login With Correct Password` test with `[Teardown]    Logout If Needed`
+5. Submit correct credentials and verify user is logged in as admin
+
+**Key Concepts:**
+- `[Teardown]` for test cleanup
+- Conditional logic with `IF` in keywords
+- `Logout If Needed` pattern for safe cleanup
+
+---
+
+### Exercise 9: Register New Account and Login
+**Objective:** Test the full user registration flow followed by login
+
+**Description:** Create `register_page.resource` using `payload_builders.py` to generate random user data. Register a new account and then log in with the new credentials.
+
+**Test Steps:**
+1. Create `resources/ui/pages/register_page.resource` importing `Browser`, `payload_builders.py`, and `home_page.resource`
+2. Add locator variables for the registration form fields
+3. Add `Open Register Form` keyword: click login button then the Register tab
+4. Add `Fill Register Form` keyword with arguments for all fields
+5. Add `Submit Register Form` and `Verify Registration Success` keywords
+6. Add `Generate New User Data` keyword using `Generate Random Username`, `Generate Random First Name`, etc.
+7. Write `Register New Account And Login` test that registers then logs in with the new user
+
+**Key Concepts:**
+- `payload_builders.py` as a data generation library
+- Multi-step form interaction
+- TEST-scope variables with `VAR ... scope=TEST`
+- Registration + login flow chaining
+
+---
+
+### Exercise 10: Create Login As Default User Keyword
+**Objective:** Encapsulate the login flow into a reusable keyword
+
+**Description:** Add `Login As Default User` keyword to `login_page.resource` that opens the login form, enters admin credentials, and verifies success. Refactor existing tests to use this keyword.
+
+**Test Steps:**
+1. Add `Login As Default User` keyword to `login_page.resource`
+2. The keyword should: open login form, submit admin credentials, verify login success
+3. Refactor `Login With Correct Password` test to use `Login As Default User` instead of separate steps
+4. Verify tests still pass
+
+**Key Concepts:**
+- Keyword encapsulation for reusability
+- DRY principle in test automation
+- Refactoring test code without changing behavior
+
+---
+
+### Exercise 11: Add New Pet
+**Objective:** Test the pet creation flow via the UI
+
+**Description:** Create `pets_page.resource` with keywords for navigating to the pets page, opening the add form, generating random pet data, filling the form, and verifying the pet was created.
+
+**Test Steps:**
+1. Create `resources/ui/pages/pets_page.resource` importing `Browser`, `payload_builders.py`, `home_page.resource`, `login_page.resource`
+2. Add locator variables for the pets page and form elements
+3. Add `Open Browse Pets Page` keyword
+4. Add `Open Add New Pet Form` keyword
+5. Add `Generate New Pet Data` keyword using `Generate Random Dog Name` and setting TEST-scope variables
+6. Add `Fill New Pet Form` with all pet field arguments
+7. Add `Submit New Pet Form` and `Verify New Pet Was Added` keywords
+8. Write `Add New Pet` test: login, navigate, generate data, fill form, submit, verify
+
+**Key Concepts:**
+- `Select Options By    value` for dropdown selection
+- `Wait For Elements State    visible` after navigation
+- `Generate Random Dog Name` from `payload_builders.py`
+- Pet form field locators by ID
+
+---
+
+### Exercise 12: Update Pet
+**Objective:** Test editing an existing pet's details
+
+**Description:** Add update-related keywords to `pets_page.resource`: opening pet details, opening the edit form, generating updated data, and verifying the update. Use `Create Pet` as a `[Setup]` keyword.
+
+**Test Steps:**
+1. Add `Open Pet Details By Name` keyword: click the pet card by name
+2. Add `Open Edit Pet Form` keyword: click the edit button, wait for the edit title
+3. Add `Generate Updated Pet Data` keyword with different values (status "sold", category 2)
+4. Add `Verify Pet Was Updated` keyword: wait for the new pet name card in the grid
+5. Add `Create Pet` keyword as a composite setup (login + navigate + create)
+6. Write `Update Pet` test with `[Setup]    Create Pet`
+
+**Key Concepts:**
+- `[Setup]` for per-test preconditions
+- Reusing `Fill New Pet Form` for both create and edit
+- XPath by normalized text content
+- Test isolation via setup keywords
+
+---
+
+### Exercise 13: Delete Pet
+**Objective:** Test the pet deletion flow and verify the pet is removed
+
+**Description:** Add `Delete Pet`, `Verify Pet Was Deleted`, and `Pet Should Not Be Visible In Grid` keywords to `pets_page.resource`. Write a test that creates a pet, deletes it, and confirms it's gone.
+
+**Test Steps:**
+1. Add `Delete Pet` keyword: `Handle Future Dialogs    action=accept` then click the delete button
+2. Add `Verify Pet Was Deleted` keyword: check the delete toast, verify the pet is not in the grid
+3. Add `Pet Should Not Be Visible In Grid` keyword: count matching elements, verify count is 0
+4. Write `Delete Pet` test with `[Setup]    Create Pet`
+
+**Key Concepts:**
+- `Handle Future Dialogs    action=accept` for browser confirm dialogs
+- `Get Element Count` for verifying absence of elements
+- `Should Be Equal As Integers` for numeric assertions
+- Destructive test pattern: create → delete → verify absence
+
+---
+
+### Exercise 14: E2E Scenario — Login, Create Pet, Order, Verify
+**Objective:** Write a complete end-to-end user journey test
+
+**Description:** Create `orders_page.resource` using `order_parser.py`. Write an E2E test that logs in, creates a pet, places an order for it, and verifies the order details.
+
+**Test Steps:**
+1. Create `resources/ui/pages/orders_page.resource` importing `Browser`, `order_parser.py`, `pets_page.resource`
+2. Add locator variables for the order modal and orders page elements
+3. Add `Place Order For Pet` keyword: open pet details, get pet ID, submit order form, parse order ID from toast
+4. Add `Open Orders Page`, `Lookup Order By Id`, `Verify Order Was Created`, `Verify Order Is For Pet` keywords
+5. Write `E2E: Login, Create Pet, Place Order, Verify Order` test
+
+**Key Concepts:**
+- `Parse Order Id From Toast` Python library function
+- TEST-scope variables shared across keywords (`${NEW_ORDER_ID}`, `${NEW_ORDER_PET_ID}`)
+- Multi-resource E2E test composition
+- End-to-end flow: login → create → order → verify
+
+---
+
+## Running UI Exercises (Quick Reference)
+
+```bash
+# Prerequisites: start services
+cd ../petstore-own-services && docker compose up -d && cd ../petstore-test-automation-en
+
+# Run specific exercise solution
+uv run python -m robot exercises/ui/exercise_4/solution/
+
+# Run practice file
+uv run python -m robot exercises/ui/exercise_4/practice/
+
+# Run with output in results/
+uv run python -m robot --outputdir results/ exercises/ui/exercise_14/solution/
+
+# Exclude known bugs
+uv run python -m robot --exclude known_bug exercises/ui/exercise_7/solution/
+
+# Run only known bug tests
+uv run python -m robot --include known_bug exercises/ui/exercise_7/solution/
+```
+
+---
 
 ## Resources
 

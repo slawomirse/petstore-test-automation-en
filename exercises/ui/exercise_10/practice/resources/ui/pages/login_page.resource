@@ -1,0 +1,33 @@
+*** Settings ***
+Library     Browser
+Resource    home_page.resource
+
+*** Variables ***
+${LOGIN_MODAL_USERNAME_INPUT}      xpath=//*[@id='auth-username']
+${LOGIN_MODAL_PASSWORD_INPUT}      xpath=//*[@id='auth-password']
+${LOGIN_MODAL_SIGN_IN_BUTTON}      xpath=//*[@id='login-form']//button[@type='submit']
+${LOGIN_MODAL_ERROR_TOAST}         xpath=//*[contains(@class,'toast')]
+${LOGIN_MODAL_SUCCESS_TOAST}       xpath=//*[contains(@class,'toast') and contains(normalize-space(),'Welcome back')]
+
+*** Keywords ***
+Open Login Form
+    Click    ${HOME_PAGE_LOGIN_BUTTON}
+
+Submit Login Form With Credentials
+    [Arguments]    ${username}    ${password}
+    Fill Text    ${LOGIN_MODAL_USERNAME_INPUT}    ${username}
+    Fill Text    ${LOGIN_MODAL_PASSWORD_INPUT}    ${password}
+    Click    ${LOGIN_MODAL_SIGN_IN_BUTTON}
+
+Login As Default User
+    # TODO: Open the login form
+    # TODO: Submit the form with ${DEFAULT_ADMIN_USERNAME} and ${DEFAULT_ADMIN_PASSWORD}
+    # TODO: Verify login success message is displayed
+
+Verify Login Error Is Displayed
+    ${error_text}=    Get Text    ${LOGIN_MODAL_ERROR_TOAST}
+    Should Contain    ${error_text}    Login failed
+
+Verify Login Success Is Displayed
+    ${success_text}=    Get Text    ${LOGIN_MODAL_SUCCESS_TOAST}
+    Should Contain    ${success_text}    Welcome back
